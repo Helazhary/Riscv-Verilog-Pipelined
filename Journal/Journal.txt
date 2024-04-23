@@ -1,0 +1,68 @@
+Note: The paradigm chosen for working was pair programming for merge conflict prevention and efficiency due to bug reduction as a result of 
+consistent second eye on the code and two brains on one problem. Planning was done on whiteboards for modules and datapath planning then implemented on vivado. The following is a general
+organization of the workflow in light of the pair programming fashion which will be represented by dates, rather than names. Work was conducted both in person in the Architecture Lab, or on a google meet where both members were always working in coordination. The most updated work will be at the top of the document as a reverse chronological paradigm showcasing the most recent updates first.
+
+
+April 22:
+	- Demo prep
+	- Finalizing report, block diagram, and other project submission details
+
+April 21:
+	- Fixed updated Single Memory and testing full instructions
+
+April 20:
+	- Bonus feature: Single memory with better hazard handling progress
+
+April 19:
+	- Bonus feature: auto test generator not working properly
+	- Fixing single memory bugs
+
+April 18:
+	- Hazard detection and forwarding implemented
+	- Single memory implementation Progress
+
+April 15:
+	- Finished buffer connections for pipelined datapath
+
+April 14:
+	- Pipelined datapath buffer progress
+
+April 13:
+	- Fixed Branch CU errors and general testing for all branch instrucitons working properly
+
+April 11:
+	- Implemented Branch Control Unit but not working properly
+	- Implemented jumping instructions
+	- Fixed the shifting problem
+	
+
+April 10:
+	- Full testing for system calls and CU bug fixed
+	- Made a full test program that contains all instructions
+	- Fixel all R and I types instructions problems
+
+April 8:
+	- Implemented system calls
+
+March 28:
+	- Fixed I instruction error (bug in shifting)
+	- Test bench for implemented instructions
+	- documentation and file submission
+
+March 27:
+	- Load and Store instructions testing
+	- Unexpected error fixed (vivado deleted file error)
+	- Load and Store instruction support
+	- Bug detected and fixed with R-type instrucitons
+
+March 26:
+	- Byte addresable memory
+	- Began working on I instructions
+	- R-type instruction testing
+	- R-type instruction development
+	- Testing basic functionality of previously supported instructions
+
+March 25:
+	- Changing PC implementation to support 32 bit program counter
+	- Fixing previous bugs
+	- Importing all modules to new vivado project

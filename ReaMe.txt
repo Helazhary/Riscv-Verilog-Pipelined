@@ -1,0 +1,23 @@
+Students:
+
+Hussein Elazhary 
+ID: 900211733
+
+Eslam Tawfik
+ID: 900215295
+
+(Release Notes)
+
+To be Continued:
+- Project completed
+
+
+Working:
+- 40 instructions
+- pipeline
+- hazard handling
+- single memory
+- Bonus: auto test gen
+- Bonus: single mem hazard better solution
+
+
