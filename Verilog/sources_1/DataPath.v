@@ -135,7 +135,7 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
 
   InstMem IM(.addr(pc_out[7:2]), .data_out(Inst));
 
-    FullAdder #(32)fa2(.a(4), .b(IF_ID_PC),  .addsub(0), .c_in(0), .sum(pc_update_sum), .c_out(pc_update_cout)); // normal case
+    FullAdder #(32)fa2(.a(4), .b(pc_out),  .addsub(0), .c_in(0), .sum(pc_update_sum), .c_out(pc_update_cout)); // normal case
 
   
 
