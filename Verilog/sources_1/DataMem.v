@@ -37,7 +37,7 @@ module DataMem
 
 
       
-mem[0]=8'd1;
+mem[0]=8'd5;
 mem[1]=8'd0;
 mem[2]=8'd0;
 mem[3]=8'd0;
