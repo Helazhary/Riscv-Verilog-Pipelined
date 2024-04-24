@@ -117,7 +117,8 @@ module RiscVPipeline (input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, ou
      .Q({EX_MEM_MemtoReg,EX_MEM_Branch,EX_MEM_MemRead,EX_MEM_MemWrite,EX_MEM_jump_inst_sum,EX_MEM_zf,EX_MEM_alu_out,EX_MEM_r_data2,EX_MEM_RegWrite,EX_MEM_INST_WriteReg}) );
 
 //-----------------------MEM----------------------------------------------
-   DataMem datamem ( .clk(clk),  .MemRead(EX_MEM_MemRead),  .MemWrite(EX_MEM_MemWrite), .addr(EX_MEM_alu_out[7:2]),  .data_in(EX_MEM_r_data2),  .data_out(mem_data_out));
+   //DataMem datamem ( .clk(clk),  .MemRead(EX_MEM_MemRead),  .MemWrite(EX_MEM_MemWrite), .addr(EX_MEM_alu_out[7:2]),
+   //  .data_in(EX_MEM_r_data2),  .data_out(mem_data_out));
    
 
     nbit_mux #(32) imm_reg_mx(.a(pc_update_sum),.b(EX_MEM_jump_inst_sum),.s((EX_MEM_zf && EX_MEM_Branch)),.c(pc_in)); //PC_MUX
@@ -132,6 +133,14 @@ module RiscVPipeline (input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, ou
 //-----------------------WB----------------------------------------------
 
     nbit_mux #(32) mxwb(.a(MEM_WB_alu_out),.b(MEM_WB_mem_data_out),.s(MEM_WB_MemtoReg),.c(reg_write_data)); //WB_MUX
-                                                                      
+          
+          
+          
+  ///------------------MEMORY-----------------------------------
+  wire[5:0]addr;
+  nbit_mux #(6) mem_in(.a(pc_out[7:2]),.b(EX_MEM_alu_out[7:2]),.s(EX_MEM_MemWrite|EX_MEM_MemRead),.c(addr)); //WB_MUX
+  
+  Memory main_mem ( .clk(clk),  .MemRead(EX_MEM_MemRead),  .MemWrite(EX_MEM_MemWrite), .addr(addr), 
+   .data_in(EX_MEM_r_data2),  .data_out(mem_data_out));                                                            
 
 endmodule

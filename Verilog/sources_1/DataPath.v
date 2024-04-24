@@ -30,7 +30,7 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
     //----------------------------------------------------------------------
     wire  [31:0]Inst;
     //----------------------------------------------------------------------
-    wire Branch, MemRead ,MemtoReg ,MemWrite ,ALUSrc ,RegWrite, AUIPCsel;
+    wire Branch, MemRead ,MemtoReg ,MemWrite ,ALUSrc ,RegWrite, AUIPCsel; 
     wire Jal,Jalr;//Jumping-Tawfik
     wire cf, zf, vf, sf;
     wire [1:0] ALUOp;
@@ -113,11 +113,6 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
 
 
 
-
-
-
-
-
   
 //\\---------------------------------()--[]-Datapath-[]--()-----------------------------------//\\
 
@@ -131,15 +126,16 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
   nbit_mux #(32) jmp_mux(.a(pc_mux1_out),.b(alu_out),.s(Jalr),.c(pc_in)); //Mux after PC_mux  to check jalr //Jumping-Tawfik    
 
 
- nbit_mux #(32) imm_reg_mx(.a({pc_update_sum}),.b({jump_inst_sum}),.s((branch_condition)),.c(pc_mux1_out)); //PC_MUX
+ nbit_mux #(32) imm_reg_mx(.a({pc_update_sum}),.b({EX_MEM_jump_inst_sum}),.s((branch_condition)),.c(pc_mux1_out)); //PC_MUX
+// nbit_mux #(32) imm_reg_mx(.a(pc_update_sum),.b(jump_inst_sum),.s((branch_condition)),.c(pc_mux1_out)); //PC_MUX
 
-  InstMem IM(.addr(pc_out[7:2]), .data_out(Inst));
+//  InstMem IM(.addr(pc_out[7:2]), .data_out(Inst));
 
-    FullAdder #(32)fa2(.a(4), .b(IF_ID_PC),  .addsub(0), .c_in(0), .sum(pc_update_sum), .c_out(pc_update_cout)); // normal case
+    FullAdder #(32)fa2(.a(4), .b(pc_out),  .addsub(0), .c_in(0), .sum(pc_update_sum), .c_out(pc_update_cout)); // normal case
 
   
 
-    NBitReg #(64) IF_ID(.clk(clk), .rst(rst),.Load(!stall), .D({pc_out,Inst}),.Q({IF_ID_PC,IF_ID_INST}));
+    NBitReg #(64) IF_ID(.clk(clk), .rst(rst),.Load(!stall), .D({pc_out,mem_data_out}),.Q({IF_ID_PC,IF_ID_INST}));
    
 
   
@@ -151,7 +147,8 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
     
     ImmGen immgen(.IR(IF_ID_INST), .gen_out(immediate));
 
-    N_bit_RegFile#(32) nbrf(.r_addr1(IF_ID_INST[19:15]), .r_addr2(IF_ID_INST[24:20]),.w_addr(MEM_WB_INST_WriteReg), .w_data(RF_data_in),.w_en(MEM_WB_RegWrite),.clk(clk), .rst(rst), .r_data1(r_data1), .r_data2(r_data2));//Jumping-Tawfik
+    N_bit_RegFile#(32) nbrf(.r_addr1(IF_ID_INST[19:15]), .r_addr2(IF_ID_INST[24:20]),.w_addr(MEM_WB_INST_WriteReg),
+     .w_data(RF_data_in),.w_en(MEM_WB_RegWrite),.clk(clk), .rst(rst), .r_data1(r_data1), .r_data2(r_data2));//Jumping-Tawfik
 
 
     nbit_mux #(32) mx_RF_writedata(.a(reg_write_data),.b(IF_ID_PC+4),.s(Jal|Jalr),.c(RF_data_in)); // Write-data MUX    //Jumping-Tawfik
@@ -160,16 +157,21 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
     CU cu( .inst(IF_ID_INST), .Branch(Branch), .MemRead(MemRead) ,.MemtoReg(MemtoReg) ,.MemWrite(MemWrite) ,.ALUSrc(ALUSrc) ,.RegWrite(RegWrite), . ALUOp(ALUOp), .AUIPCsel(AUIPCsel), .Jal(Jal),.Jalr(Jalr),.ecall(ecall),.branch_type(branch_type));//system call Hussein
    
     
-
-    NBitReg #(190) ID_EX(.clk(clk), .rst(rst),.Load(1),
-     .D({Branch,           MemRead,       MemtoReg,       MemWrite,     ALUSrc,      RegWrite,      AUIPCsel,       Jal,     Jalr,       ecall,       ALUOp,       branch_type,  IF_ID_PC,r_data1,r_data2,immediate,IF_ID_INST,IF_ID_INST[19:15],IF_ID_INST[ 24:20],IF_ID_INST[11:7]}),
-     .Q({ID_EX_Branch,ID_EX_MemRead,ID_EX_MemtoReg,ID_EX_MemWrite,ID_EX_ALUSrc,ID_EX_RegWrite,ID_EX_AUIPCsel,ID_EX_Jal,ID_EX_Jalr, ID_EX_ecall, ID_EX_ALUOp, ID_EX_branch_type,  ID_EX_PC,ID_EX_r_data1,ID_EX_r_data2,ID_EX_immediate,ID_EX_INST,ID_EX_Rs1,ID_EX_Rs2,ID_EX_INST_WriteReg}));
+    wire [14:0]signals;
 
 //Hazard detection
-hazard_detection_unit hzrd( .IF_ID_Rs1(IF_ID_INST[19:15]), .IF_ID_Rs2(IF_ID_INST[24:20]),.ID_EX_MemRead(ID_EX_MemRead),.ID_EX_RegisterRd(ID_EX_INST_WriteReg),.stall(stall));
-     
+  nbit_mux #(15) hzrd_MUX(.a({Branch, MemRead, MemtoReg, MemWrite,ALUSrc, RegWrite, AUIPCsel, Jal,Jalr, ecall, ALUOp, branch_type}),
+     .b(15'b0),.s(stall || EX_MEM_Branch),.c(signals)); //  Tawfik modified by Hussein
+
+hazard_detection_unit hzrd( .IF_ID_Rs1(IF_ID_INST[19:15]), .IF_ID_Rs2(IF_ID_INST[24:20]),.ID_EX_MemRead(ID_EX_MemRead),
+    .EX_MEM_MemRead (EX_MEM_MemRead),.EX_MEM_MemWrite(EX_MEM_MemWrite),.ID_EX_RegisterRd(ID_EX_INST_WriteReg),.stall(stall));
 
 
+
+NBitReg #(190) ID_EX(.clk(clk), .rst(rst),.Load(1),
+     .D({signals, IF_ID_PC,r_data1,r_data2,immediate,IF_ID_INST,IF_ID_INST[19:15],IF_ID_INST[ 24:20],IF_ID_INST[11:7]}),       
+     .Q({ID_EX_Branch,ID_EX_MemRead,ID_EX_MemtoReg,ID_EX_MemWrite,ID_EX_ALUSrc,ID_EX_RegWrite,ID_EX_AUIPCsel,ID_EX_Jal,ID_EX_Jalr, ID_EX_ecall, ID_EX_ALUOp,
+      ID_EX_branch_type,  ID_EX_PC,ID_EX_r_data1,ID_EX_r_data2,ID_EX_immediate,ID_EX_INST,ID_EX_Rs1,ID_EX_Rs2,ID_EX_INST_WriteReg}));  
 
 //------------------------------------------EX-----------------------------------------------------------------
    FullAdder #(32)fa(.a(ID_EX_PC), .b(new_imm),  .addsub(0), .c_in(0), .sum(jump_inst_sum), .c_out(jump_inst_cout)); // beq case
@@ -193,13 +195,13 @@ hazard_detection_unit hzrd( .IF_ID_Rs1(IF_ID_INST[19:15]), .IF_ID_Rs2(IF_ID_INST
     ALU_CU alucu(.ALUop(ID_EX_ALUOp), .inst(ID_EX_INST), .ALU_selection(ALU_selection) );
 
     NBitReg #(139) EX_MEM(.clk(clk), .rst(rst),.Load(1),
-     .D({ID_EX_MemtoReg,   ID_EX_Branch,   ID_EX_MemRead,   ID_EX_MemWrite,  jump_inst_sum,           zf,        alu_out,       ID_EX_r_data2,    ID_EX_RegWrite,ID_EX_INST_WriteReg, ID_EX_INST}),
+     .D({ID_EX_MemtoReg,   ID_EX_Branch,   ID_EX_MemRead,   ID_EX_MemWrite,  jump_inst_sum,           zf,        alu_out,       fwd_mux_out2,    ID_EX_RegWrite,ID_EX_INST_WriteReg, ID_EX_INST}),
      .Q({EX_MEM_MemtoReg,  EX_MEM_Branch,  EX_MEM_MemRead,  EX_MEM_MemWrite,  EX_MEM_jump_inst_sum,  EX_MEM_zf,  EX_MEM_alu_out,  EX_MEM_r_data2, EX_MEM_RegWrite,EX_MEM_INST_WriteReg, EX_MEM_INST}) );
  
 //---------------------------------------------------------------Mem-----------------------------------------------------
    
   //Byte addressable data mem                              
-    DataMem datamem ( .clk(clk), .fun3(EX_MEM_INST[14:12]), .MemRead(EX_MEM_MemRead),  .MemWrite(EX_MEM_MemWrite), .addr(EX_MEM_alu_out[7:0]),  .data_in(EX_MEM_r_data2),  .data_out(mem_data_out));
+  //  DataMem datamem ( .clk(clk), .fun3(EX_MEM_INST[14:12]), .MemRead(EX_MEM_MemRead),  .MemWrite(EX_MEM_MemWrite), .addr(EX_MEM_alu_out[7:0]),  .data_in(EX_MEM_r_data2),  .data_out(mem_data_out));
 
  
     NBitReg #(71) MEM_WB(.clk(clk), .rst(rst),.Load(1),
@@ -230,6 +232,32 @@ hazard_detection_unit hzrd( .IF_ID_Rs1(IF_ID_INST[19:15]), .IF_ID_Rs2(IF_ID_INST
     Mux4x1 #(32) fwd_mux1( .a(ID_EX_r_data1),.b(reg_write_data), .x(EX_MEM_alu_out),.y(),.s(forwardA), .c(fwd_mux_out1));
     
     Mux4x1 #(32) fwd_mux2( .a(ID_EX_r_data2),.b(reg_write_data), .x(EX_MEM_alu_out),.y(),.s(forwardB), .c(fwd_mux_out2));
+
+
+
+
+//-----------------------------MEMORY------------------------------------
+
+    wire[5:0]addr;
+  nbit_mux #(6) mem_in(.a(pc_out[7:2]),.b(EX_MEM_alu_out[5:0]),.s(EX_MEM_MemWrite|EX_MEM_MemRead),.c(addr)); //WB_MUX
+  
+  Memory main_mem ( .clk(clk),.fun3(EX_MEM_INST[14:12]), .MemRead(EX_MEM_MemRead),  .MemWrite(EX_MEM_MemWrite), .addr(addr), 
+   .data_in(EX_MEM_r_data2),  .data_out(mem_data_out)); 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

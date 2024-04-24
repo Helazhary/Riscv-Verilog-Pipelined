@@ -53,11 +53,12 @@ module CU (
 
   always @(*) begin
     ecall = 0;
-
+      {Branch, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, AUIPCsel, Jal, Jalr} = 9'b000000000;
+  ALUOp = 2'b00;
+  branch_type = 3'b011; 
+  
     //Default to no operation which accounts for FENCE and EBREAK as they will not be defined so they will be a no-op
-    {Branch, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, AUIPCsel, Jal, Jalr} = 9'b000000000;
-    ALUOp = 2'b00;
-    branch_type = 3'b011; //default to non of the implemented branches unique code 3
+//default to non of the implemented branches unique code 3
 
     case (inst[6:2])
 
@@ -74,6 +75,7 @@ module CU (
         {Jal, Jalr} = 2'b00;
       end
       `OPCODE_Load: begin  //load
+      if(inst[1:0]!=0)begin
         Branch = 0;
         MemRead = 1;
         MemtoReg = 1;
@@ -83,6 +85,18 @@ module CU (
         RegWrite = 1;
         AUIPCsel = 0;
         {Jal, Jalr} = 2'b00;
+        end 
+        else begin
+        Branch = 0;
+        MemRead = 0;
+        MemtoReg = 0;
+        ALUOp = 2'b00;
+        MemWrite = 0;
+        ALUSrc = 0;
+        RegWrite = 0;
+        AUIPCsel = 0;
+        {Jal, Jalr} = 2'b00;
+        end
 
       end
       `OPCODE_Store: begin  //store
@@ -182,8 +196,6 @@ module CU (
           {Jal, Jalr} = 2'b00;
         end
       end
-
-
     endcase
 
   end

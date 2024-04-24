@@ -31,7 +31,7 @@ module N_bit_RegFile#(parameter N=32)(input [4:0]r_addr1, r_addr2,w_addr, input 
     assign r_data1 =x[r_addr1];
     assign r_data2 =x[r_addr2];
     integer i;
-    always @ (posedge clk, posedge rst)
+    always @ (negedge clk, posedge rst)
     begin
         if(rst == 1) begin
             for(i=0; i<32; i= i+1) begin
