@@ -106,7 +106,11 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
 
     wire stall;
 
-
+   //----------------------------Flushing-------------------------------
+    wire [31:0] nop_inst = 32'b0000000_00000_00000_000_00000_0110011; //Hussein
+    wire [31:0] temp_Inst; //Hussein
+    wire [4:0] nop_mux2_out; //Hussein
+    //EX_MEM_Branch = pcsrc or pc mux sel
 
 
 
@@ -124,7 +128,9 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
  nbit_mux #(32) mx_pc(.a(pc_in),.b(pc_out),.s(ecall),.c(pc_mux2_out)); //PC MUX for ecall Hussein (just before the PC register)
 
   nbit_mux #(32) jmp_mux(.a(pc_mux1_out),.b(alu_out),.s(Jalr),.c(pc_in)); //Mux after PC_mux  to check jalr //Jumping-Tawfik    
-
+ 
+  //Husssein  --- instruction flushing - part 1: fetch stage by mux to send if_id stage a nop instruction
+nbit_mux #(32) nop_mux(.a(temp_Inst),.b(nop_inst),.s(EX_MEM_Branch),.c(mem_data_out)); //-- Hussein-------------------
 
  nbit_mux #(32) imm_reg_mx(.a({pc_update_sum}),.b({EX_MEM_jump_inst_sum}),.s((branch_condition)),.c(pc_mux1_out)); //PC_MUX
 // nbit_mux #(32) imm_reg_mx(.a(pc_update_sum),.b(jump_inst_sum),.s((branch_condition)),.c(pc_mux1_out)); //PC_MUX
@@ -159,7 +165,10 @@ module DataPath(input clk, rst, input [1:0] led_sel, input[3:0]SSD_sel, output r
     
     wire [14:0]signals;
 
-//Hazard detection
+
+
+                                                                            //instruction flushing - part 2: control values to be stored in the ID/EX register  (Hussein)
+                                                                                               //check | or || (Hussein)
   nbit_mux #(15) hzrd_MUX(.a({Branch, MemRead, MemtoReg, MemWrite,ALUSrc, RegWrite, AUIPCsel, Jal,Jalr, ecall, ALUOp, branch_type}),
      .b(15'b0),.s(stall || EX_MEM_Branch),.c(signals)); //  Tawfik modified by Hussein
 
@@ -183,6 +192,9 @@ NBitReg #(190) ID_EX(.clk(clk), .rst(rst),.Load(1),
   nbit_mux #(32) mxAUIPCalu(.a(fwd_mux_out1), .b(ID_EX_PC), .s(ID_EX_AUIPCsel), .c(alu_in1)); //ALU_MUX for AUIPC
     nbit_mux #(32) mxalu(.a(fwd_mux_out2),.b(ID_EX_immediate),.s(ID_EX_ALUSrc),.c(alu_in2)); //ALU _ MUX
   
+  
+  //instruction flushing - part 3: execute stage by mux to send id_ex stage a nop instruction (Hussein) 
+    nbit_mux #(5) nop_mux2(.a({ID_EX_MemtoReg,ID_EX_Branch,ID_EX_MemRead,ID_EX_MemWrite,ID_EX_RegWrite}),.b(5'b0),.s(EX_MEM_Branch),.c(nop_mux2_out)); //Hussein
 
 
     
@@ -195,7 +207,7 @@ NBitReg #(190) ID_EX(.clk(clk), .rst(rst),.Load(1),
     ALU_CU alucu(.ALUop(ID_EX_ALUOp), .inst(ID_EX_INST), .ALU_selection(ALU_selection) );
 
     NBitReg #(139) EX_MEM(.clk(clk), .rst(rst),.Load(1),
-     .D({ID_EX_MemtoReg,   ID_EX_Branch,   ID_EX_MemRead,   ID_EX_MemWrite,  jump_inst_sum,           zf,        alu_out,       fwd_mux_out2,    ID_EX_RegWrite,ID_EX_INST_WriteReg, ID_EX_INST}),
+     .D({nop_mux2_out[4], nop_mux2_out[3], nop_mux2_out[2], nop_mux2_out[1],  jump_inst_sum,           zf,        alu_out,       fwd_mux_out2,      nop_mux2_out[0], ID_EX_INST_WriteReg, ID_EX_INST}),
      .Q({EX_MEM_MemtoReg,  EX_MEM_Branch,  EX_MEM_MemRead,  EX_MEM_MemWrite,  EX_MEM_jump_inst_sum,  EX_MEM_zf,  EX_MEM_alu_out,  EX_MEM_r_data2, EX_MEM_RegWrite,EX_MEM_INST_WriteReg, EX_MEM_INST}) );
  
 //---------------------------------------------------------------Mem-----------------------------------------------------
@@ -242,57 +254,9 @@ NBitReg #(190) ID_EX(.clk(clk), .rst(rst),.Load(1),
   nbit_mux #(6) mem_in(.a(pc_out[7:2]),.b(EX_MEM_alu_out[5:0]),.s(EX_MEM_MemWrite|EX_MEM_MemRead),.c(addr)); //WB_MUX
   
   Memory main_mem ( .clk(clk),.fun3(EX_MEM_INST[14:12]), .MemRead(EX_MEM_MemRead),  .MemWrite(EX_MEM_MemWrite), .addr(addr), 
-   .data_in(EX_MEM_r_data2),  .data_out(mem_data_out)); 
+   .data_in(EX_MEM_r_data2),  .data_out(temp_Inst)); 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //---------------------------------------------------------------------------------------------------------------------------------------
-
-    always @(led_sel)begin
-        case(led_sel)
-            2'b00:LED= Inst[15:0];
-            2'b01:LED= Inst[31:16];
-            2'b10:LED= {2'b00, ALUOp,ALU_selection,Branch, MemRead ,MemtoReg ,MemWrite ,ALUSrc ,RegWrite,zf,(zf && Branch)}; //modify to account for  AUIPCsel
-            default LED=0;
-        endcase
-    end
-
-
-    always @(SSD_sel)begin
-        case(SSD_sel)
-            4'b0000: ssd={24'b0,pc_out}; //to fit the 32-bit output (ssd)
-            4'b0001: ssd={24'b0,pc_out+1};
-            4'b0010: ssd={24'b0,jump_inst_sum};
-            4'b0011: ssd={24'b0,pc_in};
-            4'b0100: ssd= r_data1;
-            4'b0101: ssd= r_data2;
-            4'b0110: ssd= reg_write_data;
-            4'b0111: ssd=immediate;
-            4'b1000: ssd=new_imm;
-            4'b1001: ssd=alu_in2;
-            4'b1010: ssd=alu_out;
-            4'b1011: ssd=mem_data_out;
-
-        endcase
-    end
 
 
 endmodule
